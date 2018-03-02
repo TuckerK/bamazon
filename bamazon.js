@@ -7,22 +7,21 @@ var connection = mysql.createConnection({
 
   user: "root",
 
-  password: "",
+  password: "gangr33n",
   database: "bamazon"
 });
 
 connection.connect(err => {
   if (err) throw err;
-start();
-  // beginStore();
-  // buyItems();
-  connection.end();
+  beginStore();
+  buyItems();
 });
 
+//Displays Items for sale
 const beginStore = () => {
   connection.query("SELECT * FROM products", (err, results) => {
     if (err) throw err;
-    let productArr = [];
+
     for (let i = 0; i < results.length; i++) {
       console.log(
         results[i].id,
@@ -32,55 +31,55 @@ const beginStore = () => {
   });
 };
 
-//THIS IS FROM THE GREATBAYBASIC.JS FILE
-function start() {
+//Buys items if enough are in stock
+var buyItems = () => {
   inquirer
-    .prompt({
-      name: "postOrBid",
-      type: "rawlist",
-      message: "Would you like to [POST] an auction or [BID] on an auction?",
-      choices: ["POST", "BID"]
-    })
-    .then(function(answer) {
-      // based on their answer, either call the bid or the post functions
-      if (answer.postOrBid.toUpperCase() === "POST") {
-        postAuction();
+    .prompt([
+      {
+        type: "input",
+        message: "Enter the id of the item you would like to purchase: ",
+        name: "itemId"
+      },
+      {
+        type: "input",
+        message: "Enter the quantity you would like to purchase: ",
+        name: "itemQuantity"
       }
-      else {
-        bidAuction();
-      }
+    ])
+    .then(usr => {
+      var item = usr.itemId;
+      var quantity = usr.itemQuantity;
+      verifyStock(item, quantity);
     });
-}
+};
 
-// THIS WAS MY CODE
-// const buyItems = () => {
-//   connection.query("SELECT * FROM products", (err, results) => {
-//     if (err) throw err;
-//     inquirer
-//       .prompt([
-//         {
-//           name: "choice",
-//           type: "list",
-//           choices: () => {
-//             let choiceArray = [];
-//             for (let i = 0; i < results.length; i++) {
-//               choiceArray.push(results[i].id);
-//             }
-//             return choiceArray;
-//           },
-//           message: "What item would you like to purchase?"
-//         }
-//         // {
-//         //     name: 'quantity',
-//         //     type: 'input',
-//         //     message: 'How many would you like to purchase?'
-//         // }
-//       ])
-//       .then(function(answer) {
-//         console.log(answer);
-//       })
-//       .catch(() => {
-//         console.log("Promise Rejected");
-//       });
-//   });
-// };
+//verifies that enough of the product is in stock
+var verifyStock = (item, quantity) => {
+  connection.query(
+    "SELECT product_name, stock_quantity, price FROM products WHERE ?",
+    [{ product_name: item }], function(err, res) {
+      console.log(res);
+      if (err) throw err;
+      if (quantity > res.stock_quantity) {
+        console.log("Sorry, not enough " + res.product_name + " in stock!");
+        console.log("We only have " + res.stock_quantity + " left. :( ");
+      } else {
+        console.log("Congratulations on your purchase!");
+        updateStock(item, quantity);
+      }
+    }
+  );
+};
+
+//updates the db 
+var updateStock = (item, quantity) => {
+  connection.query(
+    "UPDATE product SET ? WHERE ?",
+    [{stock_quantity: quantity},
+      {product_name: item}],
+    function(err, res) {
+      console.log(res.affectedRows + " products updated!\n");
+    }
+  );
+  console.log(res);
+};
